@@ -1,0 +1,45 @@
+# Version control
+.git/
+.gitignore
+
+# Python bytecodes
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+.env.example
+
+# Development tools
+.vscode/
+.idea/
+
+# Logs and data
+*.log
+*.csv
+*.json
+.pytest_cache/
+instance/
+*.sqlite
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Node modules
+node_modules/
+
+# Tests
+tests/
+*.spec.js
+*.test.js
