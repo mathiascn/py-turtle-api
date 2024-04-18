@@ -1,7 +1,7 @@
-version: '3.8'
+version: '2.1'
 
 services:
-  db:
+  mysql:
     image: mysql:8.0
     ports:
       - "3306:3306"
@@ -11,19 +11,19 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
-      - mysql-data:/var/lib/mysql
+      - ./mysql:/var/lib/mysql
+    healthcheck:
+        test: ["CMD", "curl", "-f", "localhost:3306"]
+        interval: 10s
+        timeout: 10s
+        retries: 10
 
-  app:
+  fast_api:
     build: .
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      mysql:
+        condition: service_healthy
     environment:
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_PORT: ${MYSQL_PORT}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-
-volumes:
-  mysql-data:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
