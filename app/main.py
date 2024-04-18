@@ -1,60 +1,46 @@
-from typing import Annotated, Optional
-
-from pydantic import BaseModel
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from .schemas import Turtle
 from .models import Base, Turtles
-from .db import engine, SessionLocal
+from .db import engine, get_db
 
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
 
 
-class Turtle(BaseModel):
-    id: Optional[int] = None
-    label: str
-    coordinate_x: Optional[int] = None
-    coordinate_y: Optional[int] = None
-    coordinate_z: Optional[int] = None
-    status: Optional[str] = None
-    fuel_lvl: Optional[int] = None
-
-    class Config:
-        orm_mode = True
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        
-
-db_dependency = Annotated[Session, Depends(get_db)]
-
-
-@app.get("/")
+@app.get("/", tags=["Root"])
 def read_root():
     return {"message": "The turtles are up to something..."}
 
 
-@app.get("/turtles/{turtle_id}", response_model=Turtle)
-def read_turtle(turtle_id: int, db: Session = Depends(get_db)):
-    turtle = db.query(Turtles).filter(Turtles.id == turtle_id).first()
+@app.get("/turtles/{label}", response_model=Turtle, tags=["Turtles"])
+def read_turtle(label: str, db: Session = Depends(get_db)):
+    turtle = db.query(Turtles).filter(Turtles.label == label).first()
     if turtle is None:
         raise HTTPException(status_code=404, detail="Turtle not found")
     return turtle
 
 
-@app.post("/turtles", response_model=Turtle)
-def create_turtle(turtle: Turtle, db: Session = Depends(get_db)):
-    db_turtle = Turtles(**turtle.model_dump(exclude_unset=True))
-    db.add(db_turtle)
-    db.commit()
-    db.refresh(db_turtle)
+@app.post("/turtles", response_model=Turtle, status_code=status.HTTP_201_CREATED, tags=["Turtles"])
+def create_or_update_turtle(turtle_data: Turtle, db: Session = Depends(get_db)):
+    db_turtle = db.query(Turtles).filter(Turtles.label == turtle_data.label).first()
+    
+    if db_turtle:
+        for var, value in turtle_data.model_dump(exclude_unset=True).items():
+            setattr(db_turtle, var, value)
+        db.commit()
+        db.refresh(db_turtle)
+    else:
+        db_turtle = Turtles(**turtle_data.model_dump(exclude_unset=True))
+        db.add(db_turtle)
+        db.commit()
+        db.refresh(db_turtle)
+
     return db_turtle
 
 
-#uvicorn app.main:app --host 0.0.0.0 --port 8001
+@app.get("/turtles", response_model=list[Turtle], tags=["Turtles"])
+def get_all_turtles(db: Session = Depends(get_db)):
+    return db.query(Turtles).all()
